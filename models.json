@@ -1,0 +1,15 @@
+{
+    "vocab": "_~абвгдеёжзийклмнопрстуфхцчшщъыьэюя +.,!?…:;–",
+    "rate": 16000,
+    "dir": "models",
+    "ext": "jit",
+    "output_dir": "output",
+    "names": [
+        "tisha",
+        "mila",
+        "dina",
+        "nika",
+        "tina",
+        "pasha"
+    ]
+}
