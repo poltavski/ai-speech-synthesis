@@ -4,6 +4,7 @@ import uvicorn
 from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
 from utils import apply_tts, init_config, init_models, init_jit_model
+from stressrnn import StressRNN
 
 # from uuid import uuid4
 from datetime import datetime
@@ -16,6 +17,7 @@ app = FastAPI()
 device = torch.device("cuda")
 models = init_models(device=device)
 vocab, rate, output_dir = init_config()
+stress_rnn = StressRNN()
 
 
 @app.get("/")
@@ -25,10 +27,17 @@ def index():
 
 
 @app.post("/speech")
-def speech(text: str = Body("", embed=True), voice: str = "Dina"):
+def speech(text: str = Body("", embed=True), voice: str = "Dina", stress: bool = True):
     """Speech route."""
     if not text:
         text = "Макс+им Валент+инович! М+ы озв+учиваем в+ашу р+ечь. А собр+али н+ас прил+ежные студ+енты, Полт+авский и Мезг+а"
+    if stress:
+        text = stress_rnn.put_stress(
+            text,
+            stress_symbol="+",
+            accuracy_threshold=0.75,
+            replace_similar_symbols=True,
+        )
     audio = apply_tts(
         texts=[text],
         model=models[voice.lower()],
