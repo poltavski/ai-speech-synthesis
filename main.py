@@ -11,7 +11,7 @@ from datetime import datetime
 
 import numpy as np
 import soundfile as sf
-
+import requests
 
 app = FastAPI()
 device = torch.device("cuda")
@@ -27,29 +27,42 @@ def index():
 
 
 @app.post("/speech")
-def speech(text: str = Body("", embed=True), voice: str = "Dina", stress: bool = True):
+def speech(text: str = Body("", embed=True), voice: str = "Dina", stress: bool = True, chatbot: bool = False):
     """Speech route."""
-    if not text:
-        text = "Макс+им Валент+инович! М+ы озв+учиваем в+ашу р+ечь. А собр+али н+ас прил+ежные студ+енты, Полт+авский и Мезг+а"
-    if stress:
-        text = stress_rnn.put_stress(
-            text,
-            stress_symbol="+",
-            accuracy_threshold=0.75,
-            replace_similar_symbols=True,
+    try:
+        if not text:
+            text = "Максим Валентинович! Мы озвучиваем вашу речь. А собрали нас прилежные студенты, Полтавский и Мезга"
+        if chatbot:
+            data = {
+                "uid":"cc522292-1098-4e2a-89f7-68b49f7f35b6",
+                "bot":"main",
+                "text": text,
+            }
+            headers = {'cookie': '_ym_uid=1621870280388693023; _ym_d=1621870280; _ga=GA1.2.344477183.1621870280; _gid=GA1.2.1036211673.1621870280; _ym_isad=1; SL_GWPT_Show_Hide_tmp=1; SL_wptGlobTipTmp=1; _xbs_pp=1621870292671'}
+            r = requests.post('https://xu.su/api/send', data=data, headers=headers)
+            answer = json.loads(r.text)
+            text = answer["text"] if answer.get("text") else text
+        if stress:
+            text = stress_rnn.put_stress(
+                text,
+                stress_symbol="+",
+                accuracy_threshold=0.75,
+                replace_similar_symbols=True,
+            )
+        audio = apply_tts(
+            texts=[text],
+            model=models[voice.lower()],
+            sample_rate=rate,
+            symbols=vocab,
+            device=device,
         )
-    audio = apply_tts(
-        texts=[text],
-        model=models[voice.lower()],
-        sample_rate=rate,
-        symbols=vocab,
-        device=device,
-    )
-    # filename = f"{voice}_{uuid4()}.wav"
-    date = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
-    filename = f"{output_dir}/{voice}_{date}.wav"
-    sf.write(filename, audio[0].data.cpu().numpy().astype(np.float32), rate)
-    return FileResponse(filename)
+        # filename = f"{voice}_{uuid4()}.wav"
+        date = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
+        filename = f"{output_dir}/{voice}_{date}.wav"
+        sf.write(filename, audio[0].data.cpu().numpy().astype(np.float32), rate)
+        return FileResponse(filename)
+    except:
+        return FileResponse(f"{output_dir}/default.wav")
 
 
 if __name__ == "__main__":
